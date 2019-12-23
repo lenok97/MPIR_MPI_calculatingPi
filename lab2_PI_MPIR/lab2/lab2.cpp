@@ -105,23 +105,21 @@ int main(int argc, char *argv[])
 			cin >> n;
 			workPerProc = n /size;
 			int rest = n % size;
-			int *start = new int[size];
-			int *end = new int[size];
-			start[0] =  0;
-			end[0] = workPerProc;
-			startPoint = start[0];
-			endPoint = end[0];
+			int start = 0;
+			int end = workPerProc;
+			startPoint = start;
+			endPoint = end;
 			for (int i = 1; i < size; i++)
 			{
-				start[i] = end[i-1]+1;
-				end[i] = start[i] + workPerProc-1;
+				start = end+1;
+				end = start + workPerProc-1;
 				if (rest > 0)
 				{
-					end[i]++;
+					end++;
 					rest--;
 				}
-				MPI_Send(&start[i], 1, MPI_INT, i, startTag, MPI_COMM_WORLD);
-				MPI_Send(&end[i], 1, MPI_INT, i, endTag, MPI_COMM_WORLD);
+				MPI_Send(&start, 1, MPI_INT, i, startTag, MPI_COMM_WORLD);
+				MPI_Send(&end, 1, MPI_INT, i, endTag, MPI_COMM_WORLD);
 			}
 		}
 		// init mpir variables 
@@ -157,6 +155,7 @@ int main(int argc, char *argv[])
 		}
 		sum_packed = (mp_limb_t*)malloc(mpf_packed_size);
 		mp_limb_t *packed = mpf_pack(NULL, &final_pi, 1);
+		MPI_Barrier(MPI_COMM_WORLD);
 		MPI_Reduce(packed, sum_packed, 1, MPI_MPF, MPI_SUM_MPF, root, MPI_COMM_WORLD);
 
 		if (rank == root)
