@@ -10,13 +10,35 @@ string realPi = // 150 decimal places
 "3.141592653589793238462643383279502884197169399375105820974944592307816406286208998628034825342117067982148086513282306647093844609550582231725359408128";
 size_t mpf_packed_size;
 
-void calculateTerm(mpf_t term, int a, int b, int c, int i )
+mpf_t t16, t1;
+int num[4] = { 4,2,1,1 };
+int den_add[4] = { 1,4,5,6 };
+
+void calculateTerm(mpf_t term, int b, int c, int i )
 {
 	mpf_t k;
 	mpf_init_set_d(k, i);
-	mpf_mul_ui(term, k, a);
+	mpf_mul_ui(term, k, 8);
 	mpf_add_ui(term, term, b);
 	mpf_ui_div(term, c, term);
+}
+
+// Bailey–Borwein–Plouffe formula
+//pi = Σ(i=0.. n)((1 / pow(16,i))*((4 / ((8 * i) + 1))- (2 / ((8 * i) + 4)) - (1 / ((8 * i) + 5)) - (1 / ((8 * i) +6))));
+void calculate_BBP(mpf_t term[5], mpf_t pi_term, int number)
+{
+	mpf_pow_ui(term[0], t16, number);
+	mpf_div(term[0], t1, term[0]);
+	for (int i = 1; i < 5; i++)
+	{
+		calculateTerm(term[i], den_add[i-1], num[i-1], number);
+	}
+	//pi_term = term1 - term2 - term3 - term4;
+	mpf_sub(pi_term, term[1], term[2]);
+	mpf_sub(pi_term, pi_term, term[3]);
+	mpf_sub(pi_term, pi_term, term[4]);
+	////pi_term = pi_term * term0;
+	mpf_mul(pi_term, pi_term, term[0]);
 }
 
 int main(int argc, char *argv[])
@@ -62,10 +84,11 @@ int main(int argc, char *argv[])
 			}
 		}
 		// init mpir variables 
-		mpf_t term0, term1, term2, term3, term4, k, pi_term, final_pi, pi, t16, t1;
+		mpf_t  pi_term, temp_pi, pi, term[5];
 		mp_limb_t *sum_packed;
-		mpf_init(term0); mpf_init(term1); mpf_init(term2); mpf_init(term3); mpf_init(term4); mpf_init(pi_term);  
-		mpf_init(final_pi); mpf_init(pi);
+		for (int i=0; i<5; i++)
+			mpf_init(term[i]);  
+		mpf_init(temp_pi); mpf_init(pi_term);
 		mpf_init_set_d(t1, 1); mpf_init_set_d(t16, 16);
 
 		if (rank != root)
@@ -73,44 +96,28 @@ int main(int argc, char *argv[])
 			MPI_Recv(&startPoint, 1, MPI_INT, root, startTag, MPI_COMM_WORLD, &status);
 			MPI_Recv(&endPoint, 1, MPI_INT, root, endTag, MPI_COMM_WORLD, &status);
 		}
-		for (int i = startPoint; i <= endPoint; i++)
+		for (int number = startPoint; number <= endPoint; number++)
 		{
-			// Bailey–Borwein–Plouffe formula
-			//pi = Σ(i=0.. n)((1 / pow(16,i))*((4 / ((8 * i) + 1))- (2 / ((8 * i) + 4)) - (1 / ((8 * i) + 5)) - (1 / ((8 * i) +6))));
-			mpf_pow_ui(term0, t16, i);
-			mpf_div(term0, t1, term0);
-			calculateTerm(term1, 8, 1, 4, i);
-			calculateTerm(term2, 8, 4, 2, i);
-			calculateTerm(term3, 8, 5, 1, i);
-			calculateTerm(term4, 8, 6, 1, i);
-			//pi_term = term1 - term2 - term3 - term4;
-			mpf_sub(pi_term, term1, term2);
-			mpf_sub(pi_term, pi_term, term3);
-			mpf_sub(pi_term, pi_term, term4);
-			////pi_term = pi_term * term0;
-			mpf_mul(pi_term, pi_term, term0);
-			//final_pi = final_pi + pi_term;
-			mpf_add(final_pi, final_pi, pi_term);
+			calculate_BBP(term, pi_term, number);
+			mpf_add(temp_pi, temp_pi, pi_term);
 		}
 		sum_packed = (mp_limb_t*)malloc(mpf_packed_size);
-		mp_limb_t *packed = mpf_pack(NULL, &final_pi, 1);
+		mp_limb_t *packed = mpf_pack(NULL, &temp_pi, 1);
 		MPI_Barrier(MPI_COMM_WORLD);
 		MPI_Reduce(packed, sum_packed, 1, MPI_MPF, MPI_SUM_MPF, root, MPI_COMM_WORLD);
 
 		if (rank == root)
 		{
+			mpf_init(pi);
 			mpf_unpack(&pi, sum_packed, 1);
 			cout.precision(n + 1);
 			cout << endl << pi << " - computed pi" << endl << realPi << " - real pi" << endl<< endl;
 			mpf_clear(pi);
 		}
-		mpf_clear(term0);
-		mpf_clear(term1);
-		mpf_clear(term2);
-		mpf_clear(term3);
-		mpf_clear(term4);
+		for (int i = 0; i < 5; i++)
+			mpf_clear(term[i]);
 		mpf_clear(pi_term);
-		mpf_clear(final_pi);
+		mpf_clear(temp_pi);
 	}
 	MPI_Finalize();
 	return 0;
