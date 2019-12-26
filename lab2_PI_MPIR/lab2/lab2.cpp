@@ -44,6 +44,7 @@ void calculate_BBP(mpf_t term[5], mpf_t pi_term, int number)
 int main(int argc, char *argv[])
 {
 	int rank, size, root = 0, startTag = 0, endTag = 1, n=0, workPerProc, startPoint, endPoint;
+	double endTime, startTime = 0.0;
 	MPI_Status status;
 	MPI_Init(&argc, &argv);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -70,6 +71,7 @@ int main(int argc, char *argv[])
 			int end = workPerProc;
 			startPoint = start;
 			endPoint = end;
+			startTime = MPI_Wtime();
 			for (int i = 1; i < size; i++)
 			{
 				start = end+1;
@@ -111,7 +113,11 @@ int main(int argc, char *argv[])
 			mpf_init(pi);
 			mpf_unpack(&pi, sum_packed, 1);
 			cout.precision(n + 1);
-			cout << endl << pi << " - computed pi" << endl << realPi << " - real pi" << endl<< endl;
+
+			endTime = MPI_Wtime();
+			cout << endl << pi << " - computed pi" << endl << realPi << " - real pi" << endl;
+			cout.precision(3);
+			cout<<"Time elapsed: "<< (endTime - startTime) * 1000 << "ms\n" << endl << endl;
 			mpf_clear(pi);
 		}
 		for (int i = 0; i < 5; i++)
