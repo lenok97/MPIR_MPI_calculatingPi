@@ -6,6 +6,7 @@
 #include "mpf_packer.h"
 using namespace std;
 
+const int root = 0;
 string realPi = // 150 decimal places
 "3.141592653589793238462643383279502884197169399375105820974944592307816406286208998628034825342117067982148086513282306647093844609550582231725359408128";
 size_t mpf_packed_size;
@@ -43,7 +44,7 @@ void calculate_BBP(mpf_t term[5], mpf_t pi_term, int number)
 
 int main(int argc, char *argv[])
 {
-	int rank, size, root = 0, startTag = 0, endTag = 1, n = 0, workPerProc;// , startPoint, endPoint;
+	int rank, size, n = 0;
 	double endTime, startTime = 0.0;
 	MPI_Status status;
 	MPI_Init(&argc, &argv);
@@ -67,10 +68,9 @@ int main(int argc, char *argv[])
 			cin >> n;
 			startTime = MPI_Wtime();
 		}
-
 		MPI_Bcast(&n, 1, MPI_LONG_LONG_INT, 0, MPI_COMM_WORLD);
 
-		workPerProc = n/size;
+		int workPerProc = n/size;
 		int extraElement = n % size;
 		int startPoint = rank * workPerProc;
 		int endPoint = startPoint + workPerProc-1 ;
@@ -99,6 +99,7 @@ int main(int argc, char *argv[])
 			calculate_BBP(term, pi_term, number);
 			mpf_add(temp_pi, temp_pi, pi_term);
 		}
+
 		sum_packed = (mp_limb_t*)malloc(mpf_packed_size);
 		mp_limb_t *packed = mpf_pack(NULL, &temp_pi, 1);
 		MPI_Barrier(MPI_COMM_WORLD);
@@ -115,6 +116,7 @@ int main(int argc, char *argv[])
 			cout<<"Time elapsed: "<< (endTime - startTime) * 1000 << "ms\n" << endl << endl;
 			mpf_clear(pi);
 		}
+
 		for (int i = 0; i < 5; i++)
 			mpf_clear(term[i]);
 		mpf_clear(pi_term);
