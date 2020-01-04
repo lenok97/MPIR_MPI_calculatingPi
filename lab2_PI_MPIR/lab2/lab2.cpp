@@ -43,7 +43,7 @@ void calculate_BBP(mpf_t term[5], mpf_t pi_term, int number)
 
 int main(int argc, char *argv[])
 {
-	int rank, size, root = 0, startTag = 0, endTag = 1, n=0, workPerProc, startPoint, endPoint;
+	int rank, size, root = 0, startTag = 0, endTag = 1, n = 0, workPerProc;// , startPoint, endPoint;
 	double endTime, startTime = 0.0;
 	MPI_Status status;
 	MPI_Init(&argc, &argv);
@@ -65,26 +65,27 @@ int main(int argc, char *argv[])
 			cout << "Process count = " << size << endl;
 			cout << "Count of decimal places: ";
 			cin >> n;
-			workPerProc = n /size;
-			int rest = n % size;
-			int start = 0;
-			int end = workPerProc;
-			startPoint = start;
-			endPoint = end;
 			startTime = MPI_Wtime();
-			for (int i = 1; i < size; i++)
-			{
-				start = end+1;
-				end = start + workPerProc-1;
-				if (rest > 0)
-				{
-					end++;
-					rest--;
-				}
-				MPI_Send(&start, 1, MPI_INT, i, startTag, MPI_COMM_WORLD);
-				MPI_Send(&end, 1, MPI_INT, i, endTag, MPI_COMM_WORLD);
-			}
 		}
+
+		MPI_Bcast(&n, 1, MPI_LONG_LONG_INT, 0, MPI_COMM_WORLD);
+
+		workPerProc = n/size;
+		int extraElement = n % size;
+		int startPoint = rank * workPerProc;
+		int endPoint = startPoint + workPerProc-1 ;
+		if (rank <= extraElement)
+		{
+			startPoint +=rank;
+			endPoint = startPoint + workPerProc;
+		}
+		else
+			if (rank > extraElement)
+			{
+				startPoint += extraElement +1;
+				endPoint = startPoint + workPerProc-1;
+			}
+
 		// init mpir variables 
 		mpf_t  pi_term, temp_pi, pi, term[5];
 		mp_limb_t *sum_packed;
@@ -93,11 +94,6 @@ int main(int argc, char *argv[])
 		mpf_init(temp_pi); mpf_init(pi_term);
 		mpf_init_set_d(t1, 1); mpf_init_set_d(t16, 16);
 
-		if (rank != root)
-		{
-			MPI_Recv(&startPoint, 1, MPI_INT, root, startTag, MPI_COMM_WORLD, &status);
-			MPI_Recv(&endPoint, 1, MPI_INT, root, endTag, MPI_COMM_WORLD, &status);
-		}
 		for (int number = startPoint; number <= endPoint; number++)
 		{
 			calculate_BBP(term, pi_term, number);
@@ -113,7 +109,6 @@ int main(int argc, char *argv[])
 			mpf_init(pi);
 			mpf_unpack(&pi, sum_packed, 1);
 			cout.precision(n + 1);
-
 			endTime = MPI_Wtime();
 			cout << endl << pi << " - computed pi" << endl << realPi << " - real pi" << endl;
 			cout.precision(3);
