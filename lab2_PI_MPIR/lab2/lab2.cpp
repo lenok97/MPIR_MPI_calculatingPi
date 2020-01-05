@@ -45,7 +45,7 @@ void calculate_BBP(mpf_t term[5], mpf_t pi_term, int number)
 int main(int argc, char *argv[])
 {
 	int rank, size, n = 0;
-	double endTime, startTime = 0.0;
+	double endTime, startTime;
 	MPI_Status status;
 	MPI_Init(&argc, &argv);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -63,8 +63,8 @@ int main(int argc, char *argv[])
 	{
 		if (rank == root)
 		{
-			cout << "Process count = " << size << endl;
-			cout << "Count of decimal places: ";
+			cout <<"Computing pi" << endl <<"Process count = " << size << endl;
+			cout << "Count of decimal places (1 - 2000): ";
 			cin >> n;
 			startTime = MPI_Wtime();
 		}
@@ -102,15 +102,14 @@ int main(int argc, char *argv[])
 
 		sum_packed = (mp_limb_t*)malloc(mpf_packed_size);
 		mp_limb_t *packed = mpf_pack(NULL, &temp_pi, 1);
-		MPI_Barrier(MPI_COMM_WORLD);
 		MPI_Reduce(packed, sum_packed, 1, MPI_MPF, MPI_SUM_MPF, root, MPI_COMM_WORLD);
 
 		if (rank == root)
 		{
 			mpf_init(pi);
 			mpf_unpack(&pi, sum_packed, 1);
-			cout.precision(n + 1);
 			endTime = MPI_Wtime();
+			cout.precision(n + 1);
 			cout << endl << pi << " - computed pi" << endl << realPi << " - real pi" << endl;
 			cout.precision(3);
 			cout<<"Time elapsed: "<< (endTime - startTime) * 1000 << "ms\n" << endl << endl;
