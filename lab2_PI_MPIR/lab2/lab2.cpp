@@ -101,14 +101,14 @@ int main(int argc, char *argv[])
 			mpf_add(temp_pi, temp_pi, pi_term);
 		}
 
-		sum_packed = (mp_limb_t*)malloc(mpf_packed_size);
-		mp_limb_t *packed = mpf_pack(NULL, &temp_pi, 1);
+		sum_packed = (mp_limb_t*)malloc(mpf_packed_size); // здесь мастер соберет итоговую сумму
+		mp_limb_t *packed = mpf_pack(NULL, &temp_pi, 1); // упаковываем локальную сумму и скидываем мастеру
 		MPI_Reduce(packed, sum_packed, 1, MPI_MPF, MPI_SUM_MPF, root, MPI_COMM_WORLD);
 
 		if (rank == root)
 		{
 			mpf_init(pi);
-			mpf_unpack(&pi, sum_packed, 1);
+			mpf_unpack(&pi, sum_packed, 1); // распаковывает сумму
 			endTime = MPI_Wtime();
 			cout.precision(n + 1);
 			cout << endl << pi << " - computed pi" << endl << realPi << " - real pi" << endl;
