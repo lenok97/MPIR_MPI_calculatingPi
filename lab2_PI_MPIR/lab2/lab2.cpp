@@ -24,7 +24,7 @@ void calculateTerm(mpf_t term, int b, int c, int i )
 	mpf_ui_div(term, c, term);
 }
 
-// Bailey–Borwein–Plouffe formula
+// Bailey–Borwein–Plouffe formula (Бэйли — Боруэйна — Плаффа)
 //pi = Σ(i=0.. n)((1 / pow(16,i))*((4 / ((8 * i) + 1))- (2 / ((8 * i) + 4)) - (1 / ((8 * i) + 5)) - (1 / ((8 * i) +6))));
 void calculate_BBP(mpf_t term[5], mpf_t pi_term, int number)
 {
@@ -54,11 +54,12 @@ int main(int argc, char *argv[])
 	mpf_set_default_prec(PREC); 
 	mpf_packed_size = ((NLIMBS(mpf_get_default_prec()) +5) * sizeof(mp_limb_t));
 	MPI_Datatype MPI_MPF;
-	MPI_Type_contiguous(mpf_packed_size, MPI_CHAR, &MPI_MPF);
+	// Производный тип MPI - скрытый объект, который специфицирует: последовательность базовых типов и последовательность смещений.
+	MPI_Type_contiguous(mpf_packed_size, MPI_CHAR, &MPI_MPF); 
 	// Create MPI Operation for adding mpfs
 	MPI_Type_commit(&MPI_MPF); 
 	MPI_Op MPI_SUM_MPF;
-	MPI_Op_create(mpf_packed_add, 1, &MPI_SUM_MPF); 
+	MPI_Op_create(mpf_packed_add, true, &MPI_SUM_MPF); // true if commutative
 	while (true)
 	{
 		if (rank == root)
